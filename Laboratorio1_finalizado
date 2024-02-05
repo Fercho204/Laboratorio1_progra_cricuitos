@@ -1,0 +1,182 @@
+# Laboratorio1_Fernando_Palomo_22357
+ Laboratorio 1 finalizado
+;------------------------------------------------------------------------------
+; Encabezado
+;------------------------------------------------------------------------------
+; Universidad del valle de Guatemala
+; IE2023 Programación de Microcontroladores
+; Author : Fernando José Pérez Palomo - 22357
+; Proyecto: Laboratorio_1.asm
+; Descripción: 2 contadores de 4 bits, sumarlos y mostrar bandera carry
+; Hardware: ATMega328P 
+
+.INCLUDE "M328PDEF.INC"        ; Incluye el archivo de definiciones para ATmega328P
+.CSEG                          ; Sección de código
+.ORG 0X00                      ; Posición del vector de interrupción RESET
+rjmp reset                    ; Salta a la etiqueta reset
+
+reset:
+    ; Inicialización de la pila
+    ldi r16, high(RAMEND)      ; Carga la parte alta de la dirección de la pila
+    out SPH, r16               ; Almacena la parte alta de la dirección de la pila en SPH
+    ldi r16, low(RAMEND)       ; Carga la parte baja de la dirección de la pila
+    out SPL, r16               ; Almacena la parte baja de la dirección de la pila en SPL
+
+    ; Configuración del reloj a 2MHz
+	ldi r16, 0b1000_0000       ; Carga 0b10000000 en r16
+	ldi r16, (1 << CLKPR)      ; Habilita el prescaler del reloj
+	sts CLKPR, r16              ; Almacena el valor en el registro de configuración del prescaler
+	ldi r16, 0b0000_0011       ; Carga 0b00000011 en r16 (prescaler 16MHz -> 2MHz)
+	sts CLKPR, r16              ; Almacena el valor en el registro de configuración del prescaler
+
+    ; Configuración de puertos de entrada y salida
+	ldi r16, 0b1000_0000       ; Carga 0b10000000 en r16
+	out DDRC, r16               ; Configura el puerto C como salida (LEDs y pulsadores)
+    ldi r16, 0xFF               ; Carga 0xFF (todos los bits en 1) en r16
+    out DDRB, r16               ; Configura el puerto B como salida (LEDs)
+	ldi r16, 0b1111_1111       ; Carga 0b11111111 en r16
+    out DDRD, r16               ; Configura el puerto D como salida (LEDs)
+
+	ldi r16, 0b0011_1111        ; Carga 0b00111111 en r16
+	out PORTC, r16              ; Habilita pull-up para pulsadores en el puerto C
+
+	ldi r18, 0x00               ; Inicializa el contador para PINB
+	out PORTB, r18              ; Inicializa el puerto B con el valor del contador
+
+	ldi r19,  0x00              ; Inicializa el contador para PIND
+	out PORTD, r19              ; Inicializa el puerto D con el valor del contador
+
+loop:
+    ; Manejo de pulsadores y llamadas a subrutinas
+    IN r28, PINC                ; Lee el estado de los pulsadores desde el puerto C
+    sbrs r28, PINC4             ; Verifica el pulsador de incremento (PC4)
+    rcall incrementar1
+
+    IN r28, PINC
+    sbrs r28, PINC5             ; Verifica el pulsador de decremento (PC5)
+    rcall decrementar1
+
+    IN r29, PINC
+    sbrs r29, PINC2             ; Verifica el pulsador de incremento (PC2)
+    rcall incrementar2
+
+    IN r29, PINC
+    sbrs r29, PINC3             ; Verifica el pulsador de decremento (PC3)
+    rcall decrementar2
+
+    out PINB, r18               ; Se saca el valor del contador a los puertos de B
+    out PIND, r19               ; Se saca el valor del contador a los puertos de D
+
+    IN r29, PINC
+    sbrs r29, PINC1             ; Verifica el pulsador de suma (PC1)
+    rcall suma_carry
+
+    rjmp loop                   ; Reinicio de la secuencia
+	
+	
+loop2: 
+    out PINB, r18               ; Se saca el valor del contador a los puertos de B
+
+retorno:
+    rjmp loop
+
+incrementar1:
+    ; Subrutina para incrementar contador 1
+    call retardo                ; Llama a la subrutina de retardo (anti-rebote)
+    cpi r18, 15                 ; Compara el valor del contador con 15
+    breq retorno                ; Salta a retorno si el contador es igual a 15
+    inc r18                     ; Incrementa en 1 el valor del contador
+    ret                         ; Retorna de la subrutina
+
+decrementar1:
+    ; Subrutina para decrementar contador 1
+    call retardo
+    cpi r18, 0                  ; Compara el valor del contador con 0
+    breq retorno                ; Salta a retorno si el contador es igual a 0
+    dec r18                     ; Decrementa en 1 el valor del contador
+    ret
+
+incrementar2:
+    ; Subrutina para incrementar contador 2
+    call retardo
+    cpi r19, 0xFF               ; Compara el valor del contador con 0xFF
+    breq retorno                ; Salta a retorno si el contador es igual a 0xFF
+    inc r19                     ; Incrementa en 1 el valor del contador
+    inc r19
+    inc r19
+    inc r19
+    inc r19
+    inc r19
+    inc r19
+    inc r19
+    inc r19
+    inc r19
+    inc r19
+    inc r19
+    inc r19
+    inc r19
+    inc r19
+    inc r19
+    inc r19
+    ret
+
+decrementar2:
+    ; Subrutina para decrementar contador 2
+    call retardo
+    cpi r19, 15                 ; Compara el valor del contador con 15
+    breq retorno                ; Salta a retorno si el contador es igual a 15
+    dec r19                     ; Decrementa en 1 el valor del contador
+    dec r19
+    dec r19
+    dec r19
+    dec r19             
+    dec r19
+    dec r19
+    dec r19
+    dec r19                  
+    dec r19
+    dec r19
+    dec r19
+    dec r19                    
+    dec r19
+    dec r19
+    dec r19
+    ret
+
+suma_carry:
+    ; Subrutina para sumar con bandera carry
+    call retardo
+    lsr r19                     ; Desplaza un bit a la derecha en r19
+    lsr r19
+    lsr r19
+    lsr r19
+    adc r18, r19                ; Suma r18 y r19, considerando la bandera carry
+    out PINB, r18               ; Se saca el resultado a los puertos B
+    ldi r19, 0                  ; Reinicia r19 a 0
+    out PIND, r19               ; Se saca el valor 0 a los puertos D
+    breq retorno1               ; Salta a retorno1 si el resultado es 0
+
+retardo:
+    ; Subrutina para implementar un retardo (anti-rebote para pulsadores)
+    ldi r16, 100               ; R16 = 100
+delay_loop:
+    dec r16                     ; Decrementa r16 en 1
+    brne delay_loop             ; Salta a delay_loop si r16 no es 0
+    sbis PINC, PC4              ; Salta si el pulsador de incremento (PC4) está presionado
+    rjmp retardo                ; Reinicia el retardo si PC4 está presionado
+
+    sbis PINC, PC5 
+    rjmp retardo
+
+    sbis PINC, PC3 
+    rjmp retardo
+
+    sbis PINC, PC2 
+    rjmp retardo
+
+    sbis PINC, PC1
+    rjmp retardo
+    ret
+
+retorno1:
+    rjmp loop2                  ; Salta a loop2 para continuar la secuencia
